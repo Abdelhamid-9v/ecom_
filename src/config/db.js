@@ -3,14 +3,28 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const pool = createPool({
-  host:            process.env.DB_HOST,
-  port:            Number(process.env.DB_PORT) || 3306,
-  user:            process.env.DB_USER,
-  password:        process.env.DB_PASSWORD,
-  database:        process.env.DB_NAME,
-  connectionLimit: 5,
+// 1. Nqiyou l-variables mn ay espace zayed (Trim)
+const host = process.env.DB_HOST ? process.env.DB_HOST.trim() : 'localhost';
+const port = process.env.DB_PORT ? Number(process.env.DB_PORT.trim()) : 3306;
+const user = process.env.DB_USER ? process.env.DB_USER.trim() : 'root';
+const password = process.env.DB_PASSWORD ? process.env.DB_PASSWORD.trim() : '';
+const database = process.env.DB_NAME ? process.env.DB_NAME.trim() : 'railway';
 
+// 2. N-tb3o l-m3lomat f l-Logs bach n-choufouhom b 3inina
+console.log(`\n🔍 [DEBUG] Trying to connect to DB...`);
+console.log(`➡️ Host: "${host}"`);
+console.log(`➡️ Port: ${port}`);
+console.log(`➡️ User: "${user}"`);
+console.log(`➡️ DB Name: "${database}"\n`);
+
+const pool = createPool({
+  host: host,
+  port: port,
+  user: user,
+  password: password,
+  database: database,
+  connectionLimit: 5,
+  connectTimeout: 15000 // Zidna f l-wqt dyal Timeout bach n-3tiwh l-khatr
 });
 
 export default pool;
@@ -33,12 +47,11 @@ const initDB = async () => {
       )
     `);
 
-    // Add columns if upgrading from old schema (safe to run multiple times)
     const alterQueries = [
       `ALTER TABLE products ADD COLUMN IF NOT EXISTS category  VARCHAR(100) DEFAULT 'Other'`,
-      `ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT         DEFAULT NULL`,
-      `ALTER TABLE products ADD COLUMN IF NOT EXISTS created_at TIMESTAMP   DEFAULT CURRENT_TIMESTAMP`,
-      `ALTER TABLE products ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP   DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT           DEFAULT NULL`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS created_at TIMESTAMP      DEFAULT CURRENT_TIMESTAMP`,
+      `ALTER TABLE products ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP      DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP`,
     ];
 
     for (const q of alterQueries) {
@@ -49,7 +62,7 @@ const initDB = async () => {
     console.log('✅ [DB] Connected & table ready.');
   } catch (err) {
     console.error('❌ [DB] Connection failed:', err.message);
-    process.exit(1); // crash early so you know immediately
+    process.exit(1);
   }
 };
 
