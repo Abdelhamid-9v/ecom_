@@ -1,21 +1,16 @@
-import { createPool } from 'mariadb';
+import { createPool } from 'mysql2/promise'; // <--- Hada howa l-qaleb jdid!
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-// 1. Nqiyou l-variables mn ay espace zayed (Trim)
 const host = process.env.DB_HOST ? process.env.DB_HOST.trim() : 'localhost';
 const port = process.env.DB_PORT ? Number(process.env.DB_PORT.trim()) : 3306;
 const user = process.env.DB_USER ? process.env.DB_USER.trim() : 'root';
 const password = process.env.DB_PASSWORD ? process.env.DB_PASSWORD.trim() : '';
 const database = process.env.DB_NAME ? process.env.DB_NAME.trim() : 'railway';
 
-// 2. N-tb3o l-m3lomat f l-Logs bach n-choufouhom b 3inina
-console.log(`\n🔍 [DEBUG] Trying to connect to DB...`);
-console.log(`➡️ Host: "${host}"`);
-console.log(`➡️ Port: ${port}`);
-console.log(`➡️ User: "${user}"`);
-console.log(`➡️ DB Name: "${database}"\n`);
+console.log(`\n🔍 [DEBUG] Trying to connect with MYSQL2 package...`);
+console.log(`➡️ Host: "${host}" | Port: ${port} | User: "${user}" | DB: "${database}"\n`);
 
 const pool = createPool({
   host: host,
@@ -23,8 +18,9 @@ const pool = createPool({
   user: user,
   password: password,
   database: database,
+  waitForConnections: true,
   connectionLimit: 5,
-  connectTimeout: 15000 // Zidna f l-wqt dyal Timeout bach n-3tiwh l-khatr
+  queueLimit: 0
 });
 
 export default pool;
@@ -59,7 +55,7 @@ const initDB = async () => {
     }
 
     conn.release();
-    console.log('✅ [DB] Connected & table ready.');
+    console.log('✅ [DB] Connected to Railway MySQL perfectly!');
   } catch (err) {
     console.error('❌ [DB] Connection failed:', err.message);
     process.exit(1);
