@@ -1,27 +1,15 @@
-import { createPool } from 'mysql2/promise'; // <--- Hada howa l-qaleb jdid!
+import { createPool } from 'mysql2/promise';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const host = process.env.DB_HOST ? process.env.DB_HOST.trim() : 'localhost';
-const port = process.env.DB_PORT ? Number(process.env.DB_PORT.trim()) : 3306;
-const user = process.env.DB_USER ? process.env.DB_USER.trim() : 'root';
-const password = process.env.DB_PASSWORD ? process.env.DB_PASSWORD.trim() : '';
-const database = process.env.DB_NAME ? process.env.DB_NAME.trim() : 'railway';
+// N-jbdou l-URL d-dqa w7da mn Railway
+const dbUrl = process.env.DATABASE_URL;
 
-console.log(`\n🔍 [DEBUG] Trying to connect with MYSQL2 package...`);
-console.log(`➡️ Host: "${host}" | Port: ${port} | User: "${user}" | DB: "${database}"\n`);
+console.log(`\n🔍 [DEBUG] Connecting with DATABASE_URL...`);
 
-const pool = createPool({
-  host: host,
-  port: port,
-  user: user,
-  password: password,
-  database: database,
-  waitForConnections: true,
-  connectionLimit: 5,
-  queueLimit: 0
-});
+// N-3tiw l-URL nichan l pool (Hwa kay-frez l-host o l-password rasso)
+const pool = createPool(dbUrl);
 
 export default pool;
 
