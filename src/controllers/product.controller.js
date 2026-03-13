@@ -16,7 +16,6 @@ function calcPricing(purchase_price) {
 // ─── GET ALL ─────────────────────────────────────────────────────────────────
 export const getallProducts = async (req, res) => {
   try {
-    // Optional: ?category=GPU&search=rtx&sort=price_asc
     const { category, search, sort } = req.query;
 
     let sql    = 'SELECT * FROM products WHERE 1=1';
@@ -42,7 +41,8 @@ export const getallProducts = async (req, res) => {
     };
     sql += ` ORDER BY ${sortMap[sort] || 'created_at DESC'}`;
 
-    const products = await pool.query(sql, params);
+    // L-QALEB HNA: zedna [products]
+    const [products] = await pool.query(sql, params);
     res.json(products);
   } catch (err) {
     console.error('[getallProducts]', err);
@@ -54,7 +54,7 @@ export const getallProducts = async (req, res) => {
 export const getProductById = async (req, res) => {
   const { id } = req.params;
   try {
-    const rows = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
+    const [rows] = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Product not found.' });
     res.json(rows[0]);
   } catch (err) {
@@ -67,7 +67,6 @@ export const getProductById = async (req, res) => {
 export const createProduct = async (req, res) => {
   const { name, purchase_price, quantity = 0, category = 'Other', image_url = null } = req.body;
 
-  // Validation
   if (!name || !name.trim()) return res.status(400).json({ error: 'Product name is required.' });
   if (!purchase_price || isNaN(purchase_price) || purchase_price <= 0)
     return res.status(400).json({ error: 'A valid purchase price is required.' });
@@ -79,14 +78,13 @@ export const createProduct = async (req, res) => {
   const { customs, costTotal, finalPrice } = calcPricing(purchase_price);
 
   try {
-    const result = await pool.query(
+    const [result] = await pool.query(
       'INSERT INTO products (name, purchase_price, quantity, category, image_url) VALUES (?, ?, ?, ?, ?)',
       [name.trim(), purchase_price, quantity, category, image_url]
     );
 
-    // ✅ Return the full created product (id needed by frontend for image linking)
     const newId = Number(result.insertId);
-    const rows  = await pool.query('SELECT * FROM products WHERE id = ?', [newId]);
+    const [rows] = await pool.query('SELECT * FROM products WHERE id = ?', [newId]);
 
     res.status(201).json({
       ...rows[0],
@@ -108,7 +106,6 @@ export const updateProduct = async (req, res) => {
   const { id } = req.params;
   const { name, purchase_price, quantity, category, image_url } = req.body;
 
-  // At least one field required
   if (!name && purchase_price === undefined && quantity === undefined && !category && image_url === undefined)
     return res.status(400).json({ error: 'Nothing to update.' });
 
@@ -122,7 +119,6 @@ export const updateProduct = async (req, res) => {
     return res.status(400).json({ error: 'Quantity must be non-negative.' });
 
   try {
-    // Build dynamic SET clause
     const fields  = [];
     const params  = [];
 
@@ -134,7 +130,7 @@ export const updateProduct = async (req, res) => {
 
     params.push(id);
 
-    const result = await pool.query(
+    const [result] = await pool.query(
       `UPDATE products SET ${fields.join(', ')} WHERE id = ?`,
       params
     );
@@ -142,7 +138,7 @@ export const updateProduct = async (req, res) => {
     if (result.affectedRows === 0)
       return res.status(404).json({ error: 'Product not found.' });
 
-    const updated = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
+    const [updated] = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
     res.json({ message: 'Product updated successfully! ✅', product: updated[0] });
   } catch (err) {
     console.error('[updateProduct]', err);
@@ -153,13 +149,12 @@ export const updateProduct = async (req, res) => {
 // ─── SELL (decrement stock by 1) ─────────────────────────────────────────────
 export const sellProduct = async (req, res) => {
   const { id } = req.params;
-  const qty = parseInt(req.body?.quantity) || 1; // optional: sell multiple
+  const qty = parseInt(req.body?.quantity) || 1; 
 
   if (qty < 1) return res.status(400).json({ error: 'Quantity to sell must be at least 1.' });
 
   try {
-    // Check current stock first
-    const rows = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
+    const [rows] = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Product not found.' });
 
     const product = rows[0];
@@ -171,7 +166,7 @@ export const sellProduct = async (req, res) => {
       [qty, id]
     );
 
-    const updated = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
+    const [updated] = await pool.query('SELECT * FROM products WHERE id = ?', [id]);
     res.json({
       message: `Sold ${qty} unit(s) successfully! 💰`,
       product: updated[0],
@@ -186,7 +181,7 @@ export const sellProduct = async (req, res) => {
 export const deleteProduct = async (req, res) => {
   const { id } = req.params;
   try {
-    const result = await pool.query('DELETE FROM products WHERE id = ?', [id]);
+    const [result] = await pool.query('DELETE FROM products WHERE id = ?', [id]);
 
     if (result.affectedRows === 0)
       return res.status(404).json({ error: 'Product not found or already deleted.' });
@@ -198,10 +193,10 @@ export const deleteProduct = async (req, res) => {
   }
 };
 
-// ─── STATS (bonus endpoint) ───────────────────────────────────────────────────
+// ─── STATS ───────────────────────────────────────────────────────────────────
 export const getStats = async (req, res) => {
   try {
-    const [totals] = await pool.query(`
+    const [rows] = await pool.query(`
       SELECT
         COUNT(*)                          AS total_products,
         SUM(quantity)                     AS total_stock,
@@ -213,14 +208,14 @@ export const getStats = async (req, res) => {
       FROM products
     `);
 
-    const byCategory = await pool.query(`
+    const [byCategory] = await pool.query(`
       SELECT category, COUNT(*) AS count, SUM(quantity) AS stock
       FROM products
       GROUP BY category
       ORDER BY count DESC
     `);
 
-    res.json({ summary: totals, by_category: byCategory });
+    res.json({ summary: rows[0], by_category: byCategory });
   } catch (err) {
     console.error('[getStats]', err);
     res.status(500).json({ error: 'Server error.' });
